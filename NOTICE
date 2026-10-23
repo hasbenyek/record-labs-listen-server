@@ -13,3 +13,5 @@ Changes made for Record Labs (2026-10-23):
   now refer to Record Labs.
 - The protocol definition is kept in proto/ (only its Java/Go package
   options were renamed; the wire format is unchanged).
+- Added an optional check (CLIENT_KEY / REQUIRE_CLIENT_KEY) so only official
+  Record Labs builds can use the server.

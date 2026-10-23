@@ -29,6 +29,12 @@ func Run() {
 		logger.Fatal("Failed to load UA policy", zap.Error(err))
 	}
 	server.uaPolicy = ua
+	server.clientAuth = loadClientAuth()
+	if server.clientAuth == nil {
+		logger.Info("Client key: not set (User-Agent policy only)")
+	} else {
+		logger.Info("Client key: set", zap.Bool("required", server.clientAuth.required))
+	}
 	logger.Info("User-Agent policy loaded",
 		zap.Int("block", len(ua.block)),
 		zap.Int("rickroll", len(ua.rickroll)),

@@ -55,6 +55,7 @@ type Server struct {
 	rngMu           sync.Mutex
 	logger          *zap.Logger
 	uaPolicy        *uaPolicy
+	clientAuth      *clientAuth
 	database        *database
 	connectionSlots chan struct{}
 	rng             *mathrand.Rand
@@ -203,7 +204,7 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	client := newClient(s.generateUserID(), conn)
 
 	userAgent := r.Header.Get("User-Agent")
-	tier := s.uaPolicy.resolve(userAgent)
+	tier, rejected := s.clientAuth.tier(r.Header.Get(ClientAuthHeader), s.uaPolicy.resolve(userAgent), time.Now())
 	if err := s.database.recordUserAgent(userAgent); err != nil {
 		s.logger.Warn("Failed to record User-Agent", zap.Error(err))
 	}
@@ -212,7 +213,11 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	if tier == uaBlock {
 		// Write synchronously so blocked connections cannot create untracked pumps.
 		s.logger.Debug("Blocked client", zap.String("client_id", client.clientID()))
-		message, encodeErr := client.codec.Encode(MsgTypeError, ErrorPayload{Code: "blocked_client", Message: BlockedClientMessage})
+		blockedMessage := BlockedClientMessage
+		if rejected {
+			blockedMessage = UnofficialClientMessage
+		}
+		message, encodeErr := client.codec.Encode(MsgTypeError, ErrorPayload{Code: "blocked_client", Message: blockedMessage})
 		if encodeErr != nil {
 			s.logger.Error("Failed to encode blocked-client response", zap.Error(encodeErr))
 		} else if err := conn.SetWriteDeadline(time.Now().Add(WriteTimeout)); err == nil {
