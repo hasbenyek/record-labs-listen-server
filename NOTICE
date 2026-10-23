@@ -1,0 +1,15 @@
+Record Labs Listen Together server
+Copyright (C) 2026 hasbenyek
+
+This program is a modified version of "metroserver" by MetrolistGroup
+(https://github.com/MetrolistGroup/metroserver, commit 9da6f9d, 2026-09-28),
+licensed under the GNU General Public License version 3. It is distributed
+under the same license; see LICENSE.
+
+Changes made for Record Labs (2026-10-23):
+- Renamed the Go module, command, binary, container user and default
+  database file to Record Labs names.
+- The built-in host allowlist and the messages sent to unsupported clients
+  now refer to Record Labs.
+- The protocol definition is kept in proto/ (only its Java/Go package
+  options were renamed; the wire format is unchanged).

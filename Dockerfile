@@ -1,8 +1,25 @@
-# Record Labs — Listen Together server for Render (free web service).
-# MetrolistGroup's metroserver (GPL-3.0), the exact build tested with Record Labs
-# (commit 9da6f9d, 2026-09-28), plus a policy that lets Record Labs host rooms.
-FROM ghcr.io/metrolistgroup/metroserver@sha256:9655dfbc258c2f27bad81dabe60af256da768fa7cfd7040fbff7231a4e6c1265
+# Record Labs — Listen Together server.
+# Builds the server from this repository and runs it as a small Alpine image.
+# Render (or any Docker host) sets PORT; the server listens on it (default 8080).
 
-COPY --chown=1000:1000 ua_policy.json /app/ua_policy.json
+FROM golang:1.25.6-alpine AS builder
+WORKDIR /build
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-w -s" -o recordlabs-listen ./cmd/recordlabs-listen
+
+FROM alpine:3.20
+RUN apk add --no-cache ca-certificates \
+    && addgroup -g 1000 recordlabs \
+    && adduser -D -u 1000 -G recordlabs recordlabs
+WORKDIR /app
+COPY --from=builder /build/recordlabs-listen .
+COPY ua_policy.json /app/ua_policy.json
+RUN mkdir /app/data && chown -R recordlabs:recordlabs /app
+USER recordlabs
 ENV UA_POLICY_FILE=/app/ua_policy.json
-# Render sets PORT itself; metroserver listens on it.
+EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider "http://localhost:${PORT:-8080}/health" || exit 1
+CMD ["./recordlabs-listen"]
